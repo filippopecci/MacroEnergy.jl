@@ -19,6 +19,7 @@ macro AbstractEdgeBaseAttributes()
         integer_decisions::Bool = $edge_defaults[:integer_decisions]
         investment_cost::Float64 = $edge_defaults[:investment_cost]
         loss_fraction::Float64 = $edge_defaults[:loss_fraction]
+        kvl_coefficient::Union{Missing,Float64} = $edge_defaults[:kvl_coefficient]
         max_capacity::Float64 = $edge_defaults[:max_capacity]
         min_capacity::Float64 = $edge_defaults[:min_capacity]
         min_flow_fraction::Float64 = $edge_defaults[:min_flow_fraction]
@@ -170,6 +171,7 @@ id(e::AbstractEdge) = e.id;
 integer_decisions(e::AbstractEdge) = e.integer_decisions;
 investment_cost(e::AbstractEdge) = e.investment_cost;
 loss_fraction(e::AbstractEdge) = e.loss_fraction;
+kvl_coefficient(e::AbstractEdge) =  e.kvl_coefficient;
 max_capacity(e::AbstractEdge) = e.max_capacity;
 min_capacity(e::AbstractEdge) = e.min_capacity;
 min_flow_fraction(e::AbstractEdge) = e.min_flow_fraction;

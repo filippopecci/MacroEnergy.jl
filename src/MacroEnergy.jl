@@ -13,7 +13,7 @@ using Printf: @printf
 using MacroEnergyScaling
 
 import Base: /, push!, merge!
-
+using Graphs
 # Type parameter for Macro data structures
 
 ## Commodity types
@@ -128,6 +128,8 @@ include("generate_model.jl")
 include("benders_utilities.jl")
 
 include("model/scaling.jl")
+
+include("model/linearized_power_flow.jl")
 
 include("write_outputs/capacity.jl")
 include("write_outputs/flow.jl")

@@ -50,6 +50,10 @@ function operation_model!(system::System, model::Model)
 
     operation_model!.(system.assets, Ref(model))
 
+    if any(isa.(system.assets, PowerLine))
+        add_kirchoff_voltage_law_constraint!(system, model)
+    end
+    
     add_constraints_by_type!(system, model, OperationConstraint)
 
 end
