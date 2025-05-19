@@ -18,7 +18,7 @@ macro AbstractEdgeBaseAttributes()
         has_capacity::Bool = $edge_defaults[:has_capacity]
         integer_decisions::Bool = $edge_defaults[:integer_decisions]
         investment_cost::Float64 = $edge_defaults[:investment_cost]
-        loss_fraction::Float64 = $edge_defaults[:loss_fraction]
+        loss_fraction::Vector{Float64} = $edge_defaults[:loss_fraction]
         kvl_coefficient::Union{Missing,Float64} = $edge_defaults[:kvl_coefficient]
         max_capacity::Float64 = $edge_defaults[:max_capacity]
         min_capacity::Float64 = $edge_defaults[:min_capacity]
@@ -62,7 +62,7 @@ end
     - has_capacity::Bool: Whether the edge has capacity variables
     - integer_decisions::Bool: Whether capacity decisions must be integer
     - investment_cost::Float64: Cost per unit of new capacity
-    - loss_fraction::Float64: Fraction of flow lost during transmission
+    - loss_fraction::Vector{Float64}: Fraction of flow lost during transmission, it can be time-dependent.
     - max_capacity::Float64: Maximum allowed capacity
     - min_capacity::Float64: Minimum required capacity
     - min_flow_fraction::Float64: Minimum flow as fraction of capacity
@@ -120,6 +120,9 @@ function make_edge(
             delete!(filtered_data, key)
         end
     end
+    if haskey(filtered_data,:loss_fraction) && !isa(filtered_data[:loss_fraction], Vector{Float64})
+        filtered_data[:loss_fraction] = [filtered_data[:loss_fraction]];
+    end    
     _edge = Edge{commodity}(;
         id = id,
         timedata = time_data,
@@ -171,6 +174,16 @@ id(e::AbstractEdge) = e.id;
 integer_decisions(e::AbstractEdge) = e.integer_decisions;
 investment_cost(e::AbstractEdge) = e.investment_cost;
 loss_fraction(e::AbstractEdge) = e.loss_fraction;
+function loss_fraction(e::AbstractEdge, t::Int64)
+    a = loss_fraction(e)
+    if isempty(a)
+        return 0.0
+    elseif length(a) == 1
+        return a[1]
+    else
+        return a[t]
+    end
+end
 kvl_coefficient(e::AbstractEdge) =  e.kvl_coefficient;
 max_capacity(e::AbstractEdge) = e.max_capacity;
 min_capacity(e::AbstractEdge) = e.min_capacity;
@@ -549,7 +562,7 @@ function update_balance_start!(e::AbstractEdge, model::Model)
 
     v = start_vertex(e)
 
-    if loss_fraction(e) == 0 || e.unidirectional == true
+    if e.unidirectional == true
 
         effective_flow = @expression(model, [t in time_interval(e)], flow(e, t))
 
@@ -565,7 +578,7 @@ function update_balance_start!(e::AbstractEdge, model::Model)
             @constraint(model, [t in time_interval(e)], flow_pos[t] + flow_neg[t] <= availability(e, t) * capacity(e))
         end
 
-        effective_flow = @expression(model, [t in time_interval(e)], flow_pos[t] - (1 - loss_fraction(e)) * flow_neg[t])
+        effective_flow = @expression(model, [t in time_interval(e)], flow_pos[t] - (1 - loss_fraction(e,t)) * flow_neg[t])
     end
 
     for i in balance_ids(v)
@@ -579,8 +592,8 @@ function update_balance_end!(e::AbstractEdge, model::Model)
 
     v = end_vertex(e)
 
-    if loss_fraction(e) == 0 || e.unidirectional == true
-        effective_flow = @expression(model, [t in time_interval(e)], flow(e, t))
+    if e.unidirectional == true
+        effective_flow = @expression(model, [t in time_interval(e)], (1-loss_fraction(e,t)) * flow(e, t))
     else
 
         flow_pos = @variable(model, [t in time_interval(e)], lower_bound = 0.0, base_name = "vFLOWPOS_$(id(e))")
@@ -594,7 +607,7 @@ function update_balance_end!(e::AbstractEdge, model::Model)
             @constraint(model, [t in time_interval(e)], flow_pos[t] + flow_neg[t] <= availability(e, t) * capacity(e))
         end
 
-        effective_flow = @expression(model, [t in time_interval(e)], (1 - loss_fraction(e)) * flow_pos[t] - flow_neg[t])
+        effective_flow = @expression(model, [t in time_interval(e)], (1 - loss_fraction(e,t)) * flow_pos[t] - flow_neg[t])
 
     end
 
