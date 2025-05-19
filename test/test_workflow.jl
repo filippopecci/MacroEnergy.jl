@@ -220,7 +220,7 @@ function test_load(s_in::AbstractStorage{T}, s_true::S) where {T<:Commodity,S<:J
     @test s_in.min_storage_level == get(s_true, :min_storage_level, 0.0)
     @test s_in.min_duration == get(s_true, :min_duration, 0.0)
     @test s_in.max_duration == get(s_true, :max_duration, 0.0)
-    @test s_in.loss_fraction == get(s_true, :loss_fraction, 0.0)
+    @test s_in.loss_fraction == get(s_true, :loss_fraction, [0.0])
     test_load(s_in.constraints, get(s_true, :constraints, Vector{AbstractTypeConstraint}()))
     return nothing
 end
