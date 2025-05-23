@@ -89,8 +89,8 @@ function make(asset_type::Type{<:PowerLine}, data::AbstractDict{Symbol,Any}, sys
     )
     ### TODO: Transmission expansion while modelling Kirchooff Voltage Law would require a Big-M formulation.
     ### For now, the KVL coefficent (either reactance (AC) or resistance (DC)) is set to missing if the line can expand or retire.
-    if (elec_edge.can_expand || elec_edge.can_retire) && !ismissing(elec_edge.kvl_coefficient)
-        @warn("The power line $id can expand or retire, setting the KVL coefficient to missing")
+    if (elec_edge.can_expand || elec_edge.can_retire || elec_edge.existing_capacity==0) && !ismissing(elec_edge.kvl_coefficient)
+        @warn("Not modelling KVL for power line $id as it is currently supported only for existing lines with fixed capacity.")
         elec_edge.kvl_coefficient  = missing;
     end
 

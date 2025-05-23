@@ -1,10 +1,10 @@
 function add_kirchoff_voltage_law_constraint!(system::System, model::Model)
     
     all_power_lines = [a.elec_edge for a in system.assets if a isa PowerLine]
-    power_lines = [e for e in all_power_lines if !ismissing(e.kvl_coefficient)]
+    kvl_power_lines = [e for e in all_power_lines if existing_capacity(e)>0 && !ismissing(e.kvl_coefficient)]
 
     edge_list = [(findfirst(n.id==e.start_vertex.id for n in system.locations),
-                 findfirst(n.id==e.end_vertex.id for n in system.locations)) for e in power_lines]
+                 findfirst(n.id==e.end_vertex.id for n in system.locations)) for e in kvl_power_lines]
     if !isempty(edge_list)
         cycle_incidence = get_cycle_basis_incidence(edge_list)
         @info " -- Adding Kirchoff Voltage Law constraint"
@@ -13,7 +13,7 @@ function add_kirchoff_voltage_law_constraint!(system::System, model::Model)
         else
             @constraint(model, 
                 [c in axes(cycle_incidence,1)],
-                sum(cycle_basis_incidence[c,i] * kvl_coefficient(power_lines[i]) * flow(power_lines[i]) for i in eachindex(power_lines)) == 0
+                sum(cycle_basis_incidence[c,i] * kvl_coefficient(kvl_power_lines[i]) * flow(kvl_power_lines[i]) for i in eachindex(kvl_power_lines)) == 0
             )
         end
     end
