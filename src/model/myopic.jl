@@ -30,9 +30,41 @@ function run_myopic_iteration!(case::Case, opt::Optimizer)
 
     opexmult = [sum([1 / (1 + discount_rate)^(i) for i in 1:period_lengths[s]]) for s in 1:num_periods]
 
+    if myopic_settings[:Restart][:enabled]
+        if myopic_settings[:Restart][:from_period] == 1
+            @warn("Restarting from the first period; no previous period to load, proceeding with normal iteration.")
+        else
+            restart_path = joinpath(case.systems[1].data_dirpath,myopic_settings[:Restart][:path])
+            restart_period_idx = myopic_settings[:Restart][:from_period]
+            @info("Restarting myopic iteration from period $(restart_period_idx) using capacities results from $(restart_path)")
+            capacity_results = Dict{Int,DataFrame}()
+            for period_idx in 1:restart_period_idx-1
+                capacity_results[period_idx] = load_dataframe(restart_path * "/results_period_$(period_idx)/capacity.csv")
+            end
+            carry_over_capacities!(periods[restart_period_idx], capacity_results,restart_period_idx-1)
+        end
+    end
+
     for (period_idx,system) in enumerate(periods)
+        if myopic_settings[:Restart][:enabled] && (period_idx < myopic_settings[:Restart][:from_period])
+            continue
+        end
+        if myopic_settings[:PeriodTermination] !== nothing
+            if period_idx > myopic_settings[:PeriodTermination]
+                @info("Reached specified period termination at period $(myopic_settings[:PeriodTermination]). Ending myopic iteration.")
+                break
+            end
+        end
+
         @info(" -- Generating model for period $(period_idx)")
-        model = Model()
+        if system.settings.EnableJuMPDirectModel
+            model = create_direct_model_with_optimizer(opt)
+        else
+            model = Model()
+            set_optimizer(model, opt)
+        end
+
+        set_string_names_on_creation(model,system.settings.EnableJuMPStringNames)
 
         @variable(model, vREF == 1)
 
@@ -87,8 +119,6 @@ function run_myopic_iteration!(case::Case, opt::Optimizer)
         @expression(model, eVariableCost, eVariableCostByPeriod[period_idx])
 
         @objective(model, Min, model[:eFixedCost] + model[:eVariableCost])
-
-        set_optimizer(model, opt)
 
         scale_constraints!(system, model)
 
