@@ -160,9 +160,21 @@ function make(asset_type::Type{ElectricHeating}, data::AbstractDict{Symbol,Any},
         elec_end_node,
     )
 
+    elec_edge.unidirectional = true
+
+    heat_edge.unidirectional = true
+
+    user_supplied_elec_consumption = get(transform_data, :elec_consumption, 1.0)
+    if isa(user_supplied_elec_consumption,AbstractVector)
+        constant_elec_consumption = 1.0
+        elec_edge.loss_fraction = user_supplied_elec_consumption
+    else
+        constant_elec_consumption = user_supplied_elec_consumption
+    end
+
     heating_transform.balance_data = Dict(
         :energy => Dict(
-            heat_edge.id => get(transform_data, :elec_consumption, 1.0),
+            heat_edge.id => constant_elec_consumption,
             elec_edge.id => 1.0,
         ),
     )
